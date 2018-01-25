@@ -63,15 +63,6 @@ private:
 };
 
 
-class Volume {
-
-public:
-
-private:
-
-};
-
-
 // cast functions for binary data reading
 
 int cast_to_int(char* buffer4, bool swap) {
