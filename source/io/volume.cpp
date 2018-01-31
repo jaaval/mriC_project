@@ -3,16 +3,16 @@
 #include <iostream>
 
 
-double Volume::get(int i, int t) {
+double* Volume::get(int i, int t) {
   return data[i][t];
 }
 
-double Volume::get(int x, int y, int z, int t) {
+double* Volume::get(int x, int y, int z, int t) {
   int index = xyz_to_i(x,y,z, dims);
   return data[index][t];
 }
 
-std::vector<double>& Volume::get(int x, int y, int z) {
+std::vector<double*>& Volume::get(int x, int y, int z) {
   int index = xyz_to_i(x,y,z, dims);
   return data[index];
 }
@@ -43,9 +43,25 @@ Volume::Volume() {//test constructor
   dims[1] = 64;
   dims[2] = 48;
   dims[3] = 5;
+  datadim = 1;
   for (int i = 0; i < 64*64*48; i++) {
-    std::vector<double> datatest = {i,i,i,i,i};
-    data.push_back(datatest);
+    std::vector<double*> temp;
+    for (int j = 0; j < 5; j++) {
+      double* datatesti = new double[datadim];
+      datatesti[0] = i;
+      temp.push_back(datatesti);
+    }
+    data.push_back(temp);
+  }
+}
+
+Volume::~Volume() {
+  for (auto iter1 = data.begin(); iter1 < data.end(); iter1++) {
+    for (auto iter2 = iter1->begin(); iter2 < iter1->end(); iter2++) {
+      if (*iter2 && *iter2 != NULL) {
+        delete[] *iter2;
+      }
+    }
   }
 }
 
@@ -55,10 +71,12 @@ Volume::Volume() {//test constructor
 int main() {
   int num = 25*25*25;
   Volume asdf;
-  double test1 = asdf.get(num,2);
+  double* test11 = asdf.get(num,2);
+  double test1 = test11[0];
   int ds[] = {64,64,48, 5};
   std::vector<int> bla = i_to_xyz(num, ds);
-  double test2 = asdf.get(bla[0], bla[1], bla[2], 2);
+  double* test22 = asdf.get(bla[0], bla[1], bla[2], 2);
+  double test2 = test22[0];
   std::cout << test1 << std::endl;
   std::cout << test2 << std::endl;
   std::cout << bla[0] << " " << bla[1] << " " << bla[2] << std::endl;

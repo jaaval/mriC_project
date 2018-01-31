@@ -5,8 +5,10 @@
 #include <fstream>
 #include <string>
 
-#include "nifti1.h"
-#include "nifti2.h"
+#include "nifti1.h" // constants for the header
+#include "nifti2.h" // header definition
+#include "volume.h"
+
 
 
 class Nifti {
@@ -14,33 +16,21 @@ public:
 
   Nifti(const std::string fileName);
 
-  nifti_1_header& getHeader() {
-    return header1;
+  nifti_2_header& getHeader() {
+    return header;
   }
 
   short dimx() const {
-    if (type == 1)
-      return header1.dim[0];
-    else
-      return header2.dim[0];
+    return header.dim[0];
   }
   short dimy() const {
-    if (type == 1)
-      return header1.dim[1];
-    else
-      return header2.dim[1];
+    return header.dim[1];
   }
   short dimz() const {
-    if (type == 1)
-      return header1.dim[2];
-    else
-      return header2.dim[2];
+    return header.dim[2];
   }
   short dimt() const {
-    if (type == 1)
-      return header1.dim[3];
-    else
-      return header2.dim[3];
+    return header.dim[3];
   }
 
   void readFile(std::string fileName);
@@ -53,12 +43,12 @@ private:
   void readData(std::ifstream& ifs);
   void checkDataType(std::ifstream& ifs);
 
-  nifti_1_header header1;
-  nifti_2_header header2;
-  int type;
-  bool dataLoaded;
+  nifti_2_header header;
+  int type; // nifti1 or 2. the header struct used internally is the same
   bool swap;
   std::string fileName;
+
+  bool header_read;
 
 };
 
@@ -76,15 +66,21 @@ int cast_to_int(char* buffer4, bool swap) {
 }
 
 float cast_to_float(char* buffer4, bool swap) {
-  return (float) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
+  float a;
+  if (swap) {
+    a = (float) (buffer4[0] << 24 | buffer4[1] << 16 | buffer4[2] << 8 | buffer4[3]);
+  } else {
+    a = (float) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
+  }
+  return a;
 }
 
-short cast_to_short(char* buffer2, bool swap) {
-  short a;
+int16_t cast_to_short(char* buffer2, bool swap) {
+  int16_t a;
   if (swap) {
-    a = (short) (buffer2[0] << 8 | buffer2[1]);
+    a = (int16_t) (buffer2[0] << 8 | buffer2[1]);
   } else {
-    a =  (short) (buffer2[1] << 8 | buffer2[0]);
+    a =  (int16_t) (buffer2[1] << 8 | buffer2[0]);
   }
   return a;
 }

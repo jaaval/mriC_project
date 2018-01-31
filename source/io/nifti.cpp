@@ -1,16 +1,20 @@
 
 #include "nifti.h"
 #include <iostream>
+#include <string.h>
 
 
 Nifti::Nifti(std::string fileName) {
-  header1 = nifti_1_header();
-  header2 = nifti_2_header();
+  header = nifti_2_header();
   this->fileName = fileName;
   std::ifstream ifs (fileName, std::ifstream::binary);
   if (ifs) {
     checkDataType(ifs);
-    readHeaderType1(ifs, swap);
+    if (type == 1) {
+      readHeaderType1(ifs, swap);
+    } else if (type == 2) {
+      std::cout << "have not implemented nifti2 reading yet" << std::endl;
+    }
     ifs.close();
   } else {
     std::cout << "shit 3" << std::endl;
@@ -53,142 +57,152 @@ void Nifti::readFile(std::string fileName) {
 
 
 void Nifti::readData(std::ifstream& ifs) {
+  if (!header_read) {
+    std::cout << "here be error" << std::endl;
+  }
+  int hlen = header.sizeof_hdr;
+  ifs.seekg(hlen); // jump at the end of header
 
 }
 
 
+/*
+ * read nifti1 header to nifti2 header template
+*/
 void Nifti::readHeaderType1(std::ifstream& ifs, bool swap) {
   char* buffer4 = new char[4];
   char* buffer2 = new char[2];
 
   ifs.get(buffer4, 5);
-  header1.sizeof_hdr = cast_to_int(buffer4, swap);
-  if (header1.sizeof_hdr != 348) {
+  header.sizeof_hdr = cast_to_int(buffer4, swap);
+  if (header.sizeof_hdr != 348) {
     // The end of the world!
     std::cout << "shit" << std::endl;
   }
 
-  ifs.get(header1.data_type, 11);
+  ifs.ignore(10);//data_type
 
-  ifs.get(header1.db_name, 19);
+  ifs.ignore(18);//whatever
 
-  ifs.get(buffer4, 5);
-  header1.extents = cast_to_int(buffer4, swap);
+  ifs.ignore(4);//extents
 
-  ifs.get(buffer2, 3);
-  header1.session_error = cast_to_short(buffer2, swap);
+  ifs.ignore(2);//extents
 
-  ifs.get(header1.regular);
+  ifs.ignore(1);//regular
 
-  ifs.get(header1.dim_info);
+  ifs.ignore(1);//dim_info
 
   for (int i = 0; i < 8; i++) {
       ifs.get(buffer2, 3);
-      header1.dim[i] = cast_to_short(buffer2, swap);
+      header.dim[i] = cast_to_short(buffer2, swap);
   }
 
   ifs.get(buffer4, 5);
-  header1.intent_p1 = cast_to_float(buffer4, swap);
+  header.intent_p1 = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.intent_p2 = cast_to_float(buffer4, swap);
+  header.intent_p2 = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.intent_p3 = cast_to_float(buffer4, swap);
+  header.intent_p3 = cast_to_float(buffer4, swap);
 
   ifs.get(buffer2, 3);
-  header1.intent_code = cast_to_short(buffer2, swap);
+  header.intent_code = cast_to_short(buffer2, swap);
 
   ifs.get(buffer2, 3);
-  header1.datatype = cast_to_short(buffer2, swap);
+  header.datatype = cast_to_short(buffer2, swap);
 
   ifs.get(buffer2, 3);
-  header1.bitpix = cast_to_short(buffer2, swap);
+  header.bitpix = cast_to_short(buffer2, swap);
 
   ifs.get(buffer2, 3);
-  header1.slice_start = cast_to_short(buffer2, swap);
+  header.slice_start = cast_to_short(buffer2, swap);
 
   for (int i = 0; i < 8; i++) {
     ifs.get(buffer4, 5);
-    header1.pixdim[i] = cast_to_float(buffer4, swap);
+    header.pixdim[i] = cast_to_float(buffer4, swap);
   }
 
   ifs.get(buffer4, 5);
-  header1.vox_offset = cast_to_float(buffer4, swap);
+  header.vox_offset = (int64_t)cast_to_float(buffer4, swap); //old was float. now long. figure out
 
   ifs.get(buffer4, 5);
-  header1.scl_slope = cast_to_float(buffer4, swap);
+  header.scl_slope = cast_to_float(buffer4, swap);
 
   ifs.get(buffer4, 5);
-  header1.scl_inter = cast_to_float(buffer4, swap);
+  header.scl_inter = cast_to_float(buffer4, swap);
 
   ifs.get(buffer2, 3);
-  header1.slice_end = cast_to_short(buffer2, swap);
+  header.slice_end = cast_to_short(buffer2, swap);
 
-  ifs.get(header1.slice_code);
+  char a;
+  ifs.get(a);
+  header.slice_code = (int)a; // figure this out
 
-  ifs.get(header1.xyzt_units);
-
-  ifs.get(buffer4, 5);
-  header1.cal_max = cast_to_float(buffer4, swap);
-
-  ifs.get(buffer4, 5);
-  header1.cal_min = cast_to_float(buffer4, swap);
+  ifs.get(a);
+  header.xyzt_units = (int)a; // figure this out
 
   ifs.get(buffer4, 5);
-  header1.slice_duration = cast_to_float(buffer4, swap);
+  header.cal_max = cast_to_float(buffer4, swap);
 
   ifs.get(buffer4, 5);
-  header1.toffset = cast_to_float(buffer4, swap);
+  header.cal_min = cast_to_float(buffer4, swap);
 
   ifs.get(buffer4, 5);
-  header1.glmax = cast_to_int(buffer4, swap);
+  header.slice_duration = cast_to_float(buffer4, swap);
 
   ifs.get(buffer4, 5);
-  header1.glmin = cast_to_int(buffer4, swap);
+  header.toffset = cast_to_float(buffer4, swap);
 
-  ifs.get(header1.descrip, 81);
+  ifs.ignore(4); // glmax
 
-  ifs.get(header1.aux_file, 25);
+  ifs.ignore(4); // glmin
+
+  ifs.get(header.descrip, 81);
+
+  ifs.get(header.aux_file, 25);
 
   ifs.get(buffer2, 3);
-  header1.qform_code = cast_to_short(buffer2, swap);
+  header.qform_code = cast_to_short(buffer2, swap);
 
   ifs.get(buffer2, 3);
-  header1.sform_code = cast_to_short(buffer2, swap);
+  header.sform_code = cast_to_short(buffer2, swap);
 
 
   ifs.get(buffer4, 5);
-  header1.quatern_b = cast_to_float(buffer4, swap);
+  header.quatern_b = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.quatern_c = cast_to_float(buffer4, swap);
+  header.quatern_c = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.quatern_d = cast_to_float(buffer4, swap);
+  header.quatern_d = cast_to_float(buffer4, swap);
 
   ifs.get(buffer4, 5);
-  header1.qoffset_x = cast_to_float(buffer4, swap);
+  header.qoffset_x = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.qoffset_y = cast_to_float(buffer4, swap);
+  header.qoffset_y = cast_to_float(buffer4, swap);
   ifs.get(buffer4, 5);
-  header1.qoffset_z = cast_to_float(buffer4, swap);
+  header.qoffset_z = cast_to_float(buffer4, swap);
 
 
   for (int i = 0; i < 4; i++) {
     ifs.get(buffer4, 5);
-    header1.srow_x[i] = cast_to_float(buffer4, swap);
+    header.srow_x[i] = cast_to_float(buffer4, swap);
   }
 
   for (int i = 0; i < 4; i++) {
     ifs.get(buffer4, 5);
-    header1.srow_y[i] = cast_to_float(buffer4, swap);
+    header.srow_y[i] = cast_to_float(buffer4, swap);
   }
 
   for (int i = 0; i < 4; i++) {
     ifs.get(buffer4, 5);
-    header1.srow_z[i] = cast_to_float(buffer4, swap);
+    header.srow_z[i] = cast_to_float(buffer4, swap);
   }
 
-  ifs.get(header1.intent_name, 17);
+  ifs.get(header.intent_name, 17);
 
-  ifs.get(header1.magic, 5);
+  ifs.get(header.magic, 5);
+  if (!strcmp(header.magic, "nil\0")) {
+    std::cout << "magic not valid nifti1 identifier" << std::endl;
+  }
 
   if (ifs.tellg() != 348) {
     //well shit
@@ -196,6 +210,7 @@ void Nifti::readHeaderType1(std::ifstream& ifs, bool swap) {
 
   }
 
+  header_read = true;
   delete[] buffer2;
   delete[] buffer4;
 }

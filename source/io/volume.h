@@ -28,21 +28,25 @@ class Volume {
 public:
 
   Volume();
+  ~Volume();
 
-  double get(int i, int t);
-  double get(int x, int y, int z, int t);
-  std::vector<double>& get(int x, int y, int z);
+  double* get(int i, int t);
+  double* get(int x, int y, int z, int t);
+  std::vector<double*>& get(int i);
+  std::vector<double*>& get(int x, int y, int z);
 
   std::vector<int> getNeighborhoodIndices(int i, int r);
   std::vector<int> getNeighborhoodIndices(int x, int y, int z, int r);
 
 private:
 
-  // data x*y*z*t
-  std::vector<std::vector<double>> data;
+  // data (x*y*z) * t * (datadim)
+  std::vector<std::vector<double*>> data;
   VolInfo info;
 
   int dims[4];
+  int datadim;
+  // TODO aux params
 
 };
 
