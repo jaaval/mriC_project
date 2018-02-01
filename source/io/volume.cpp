@@ -18,13 +18,15 @@ std::vector<double*>& Volume::get(int x, int y, int z) {
 }
 
 std::vector<int> Volume::getNeighborhoodIndices(int x, int y, int z, int r) {
-  std::vector<int> indices;
+  int n = (2*r+1)*(2*r+1) - (2*(r-1)+1)*(2*(r-1)+1);
+  std::vector<int> indices(n);
+  int counter = 0;
   for (int a = x - r; a < x + r+1; a++) {
     for (int b = y - r; b < y + r+1; b++) {
       for (int c = z - r; c < z + r+1; c++) {
         if (a == x+r || a == x-r || b == y+r || b == y-r || c == z+r || c == z-r) {
           if (a >= 0 && b >= 0 && c >= 0 && a < dims[0] && b < dims[1] && c < dims[2]) {
-            indices.push_back(xyz_to_i(a, b, c, dims));
+            indices[counter++] = xyz_to_i(a, b, c, dims);
           }
         }
       }
@@ -36,6 +38,49 @@ std::vector<int> Volume::getNeighborhoodIndices(int x, int y, int z, int r) {
 std::vector<int> Volume::getNeighborhoodIndices(int i, int r) {
   std::vector<int> xyz = i_to_xyz(i, dims);
   return getNeighborhoodIndices(xyz[0], xyz[1], xyz[2], r);
+}
+
+
+void Volume::createContainer() {
+  int n = dims[0] * dims[1] * dims[2];
+  int t = dims[3];
+  std::vector<std::vector<double*>> temp1(n, std::vector<double*>(t, NULL));
+  data = temp1;
+  for (int i = 0; i < n; i++) {
+    for (int j = 0; j < t; j++) {
+      double* temp3 = new double[datadim];
+      data[i][j] = temp3;
+    }
+  }
+}
+
+
+void Volume::printData() {
+  for (auto iter1 = data.begin(); iter1 < data.end(); iter1++) {
+    for (auto iter2 = iter1->begin(); iter2 < iter1->end(); iter2++) {
+      if (*iter2 && *iter2 != NULL) {
+        for (int i = 0; i < datadim; i++) {
+          std::cout << *iter2[i] << " ";
+        }
+        std::cout << " - ";
+      }
+    }
+    std::cout << std::endl;
+  }
+}
+
+Volume::Volume(int64_t dims_[]) {
+  // set info on container dimensions
+  for (int i = 1; i < 5; i++) {
+    dims[i-1] = dims_[i];
+  }
+  if (dims_[0] < 5) {
+    datadim = 1;
+  } else {
+    datadim = dims_[5];
+  }
+  // allocate the container
+  createContainer();
 }
 
 Volume::Volume() {//test constructor
@@ -67,8 +112,25 @@ Volume::~Volume() {
 
 
 
+int xyz_to_i(int x, int y, int z, int dims[]) {
+  assert(x < dims[0] &&  y < dims[1] && z < dims[2]);
+  return x * dims[1] * dims[2] + y * dims[2] + z;
+}
 
-int main() {
+std::vector<int> i_to_xyz(int i, int dims[]) {
+  assert(i < dims[0] * dims[1] * dims[2]);
+  int yz = dims[1] * dims[2];
+  int x = i / yz;
+  int ix = (i - x * yz);
+  int y = ix / dims[2];
+  int z = ix % dims[2];
+  return std::vector<int> {x,y,z};
+}
+
+
+
+
+int testmain() {
   int num = 25*25*25;
   Volume asdf;
   double* test11 = asdf.get(num,2);

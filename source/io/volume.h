@@ -3,31 +3,23 @@
 
 #include <vector>
 #include <assert.h>
+#include <stdint.h>
 
 typedef struct VolInfo {
   int a;//placeholder
 } VolInfo;
 
-int xyz_to_i(int x, int y, int z, int dims[]) {
-  assert(x < dims[0] &&  y < dims[1] && z < dims[2]);
-  return x * dims[1] * dims[2] + y * dims[2] + z;
-}
+int xyz_to_i(int x, int y, int z, int dims[]);
 
-std::vector<int> i_to_xyz(int i, int dims[]) {
-  assert(i < dims[0] * dims[1] * dims[2]);
-  int yz = dims[1] * dims[2];
-  int x = i / yz;
-  int ix = (i - x * yz);
-  int y = ix / dims[2];
-  int z = ix % dims[2];
-  return std::vector<int> {x,y,z};
-}
+std::vector<int> i_to_xyz(int i, int dims[]);
+
 
 class Volume {
 
 public:
 
   Volume();
+  Volume( int64_t dims_[]);
   ~Volume();
 
   double* get(int i, int t);
@@ -35,10 +27,18 @@ public:
   std::vector<double*>& get(int i);
   std::vector<double*>& get(int x, int y, int z);
 
+  std::vector<std::vector<double*>>& getDataReference() {return data;}
+
+  // these are for accessing cenrtain parts of the 3d data. return indices of the data.
   std::vector<int> getNeighborhoodIndices(int i, int r);
   std::vector<int> getNeighborhoodIndices(int x, int y, int z, int r);
+  std::vector<int> getSliceIndices(int i, int direction);
+
+  void printData();
 
 private:
+
+  void createContainer();
 
   // data (x*y*z) * t * (datadim)
   std::vector<std::vector<double*>> data;

@@ -15,10 +15,13 @@ class Nifti {
 public:
 
   Nifti(const std::string fileName);
+  ~Nifti() {delete dataVolume;}
 
   nifti_2_header& getHeader() {
     return header;
   }
+
+  Volume* getDataPointer() { return dataVolume; }
 
   short dimx() const {
     return header.dim[0];
@@ -38,15 +41,24 @@ public:
 
 private:
 
-  void readHeaderType1(std::ifstream& ifs, bool swap);
-  void readHeaderType2(std::ifstream& ifs, bool swap);
+  void readHeaderType1(std::ifstream& ifs);
+  void readHeaderType2(std::ifstream& ifs);
   void readData(std::ifstream& ifs);
   void checkDataType(std::ifstream& ifs);
+
+  double scale(double in) {
+    if (header.scl_slope != 0) {
+      in *= header.scl_slope;
+    }
+    in += header.scl_inter;
+    return in;
+  }
 
   nifti_2_header header;
   int type; // nifti1 or 2. the header struct used internally is the same
   bool swap;
   std::string fileName;
+  Volume* dataVolume; // pointer to actual data container class
 
   bool header_read;
 
@@ -55,38 +67,13 @@ private:
 
 // cast functions for binary data reading
 
-int cast_to_int(char* buffer4, bool swap) {
-  int a;
-  if (swap) {
-    a = (int) (buffer4[0] << 24 | buffer4[1] << 16 | buffer4[2] << 8 | buffer4[3]);
-  } else {
-    a = (int) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
-  }
-  return a;
-}
+int cast_to_int(char* buffer4, bool swap);
 
-float cast_to_float(char* buffer4, bool swap) {
-  float a;
-  if (swap) {
-    a = (float) (buffer4[0] << 24 | buffer4[1] << 16 | buffer4[2] << 8 | buffer4[3]);
-  } else {
-    a = (float) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
-  }
-  return a;
-}
+float cast_to_float(char* buffer4, bool swap);
 
-int16_t cast_to_short(char* buffer2, bool swap) {
-  int16_t a;
-  if (swap) {
-    a = (int16_t) (buffer2[0] << 8 | buffer2[1]);
-  } else {
-    a =  (int16_t) (buffer2[1] << 8 | buffer2[0]);
-  }
-  return a;
-}
+double cast_to_double(char* buffer8, bool swap);
 
-
-
+int16_t cast_to_short(char* buffer2, bool swap);
 
 
 #endif

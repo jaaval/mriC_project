@@ -11,10 +11,11 @@ Nifti::Nifti(std::string fileName) {
   if (ifs) {
     checkDataType(ifs);
     if (type == 1) {
-      readHeaderType1(ifs, swap);
+      readHeaderType1(ifs);
     } else if (type == 2) {
       std::cout << "have not implemented nifti2 reading yet" << std::endl;
     }
+    readData(ifs);
     ifs.close();
   } else {
     std::cout << "shit 3" << std::endl;
@@ -56,20 +57,60 @@ void Nifti::readFile(std::string fileName) {
 }
 
 
+// this be difficult
 void Nifti::readData(std::ifstream& ifs) {
   if (!header_read) {
     std::cout << "here be error" << std::endl;
   }
-  int hlen = header.sizeof_hdr;
-  ifs.seekg(hlen); // jump at the end of header
+  ifs.seekg(header.vox_offset); // jump to start of voxel data
 
+  dataVolume = new Volume(header.dim);
+  std::vector<std::vector<double*>> data = dataVolume->getDataReference();
+
+  int bpervox = header.bitpix;
+  char* buffer = new char[bpervox];
+  double value;
+  int index;
+
+  // different datatypes handle differently
+  for (int x = 0; x < header.dim[1]; x++) {
+    for (int y = 0; y < header.dim[2]; y++) {
+      for (int z = 0; z < header.dim[3]; z++) {
+        for (int t = 0; t < header.dim[4]; t++) {
+          for (int d = 0; d < header.dim[5]; d++) {
+            ifs.get(buffer, bpervox+1);
+            switch (header.datatype) {
+              case NIFTI_TYPE_FLOAT64 :
+                value = cast_to_double(buffer, swap);
+                break;
+              case NIFTI_TYPE_FLOAT32 :
+                value = (double)cast_to_float(buffer, swap);
+                break;
+              case NIFTI_TYPE_INT16 :
+                value = (double)cast_to_short(buffer, swap);
+                break;
+              case NIFTI_TYPE_INT32 :
+                value = (double)cast_to_int(buffer, swap);
+                break;
+              default :
+                value = -1.0;
+            }
+            value = scale(value);
+            index = x * header.dim[2] * header.dim[3] + y * header.dim[3] + z;
+            data[index][t][d] = value;
+          }
+        }
+      }
+    }
+  }
+  delete[] buffer;
 }
 
 
 /*
  * read nifti1 header to nifti2 header template
 */
-void Nifti::readHeaderType1(std::ifstream& ifs, bool swap) {
+void Nifti::readHeaderType1(std::ifstream& ifs) {
   char* buffer4 = new char[4];
   char* buffer2 = new char[2];
 
@@ -216,6 +257,51 @@ void Nifti::readHeaderType1(std::ifstream& ifs, bool swap) {
 }
 
 
+
+int cast_to_int(char* buffer4, bool swap) {
+  int a;
+  if (swap) {
+    a = (int) (buffer4[0] << 24 | buffer4[1] << 16 | buffer4[2] << 8 | buffer4[3]);
+  } else {
+    a = (int) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
+  }
+  return a;
+}
+
+float cast_to_float(char* buffer4, bool swap) {
+  float a;
+  if (swap) {
+    a = (float) (buffer4[0] << 24 | buffer4[1] << 16 | buffer4[2] << 8 | buffer4[3]);
+  } else {
+    a = (float) (buffer4[3] << 24 | buffer4[2] << 16 | buffer4[1] << 8 | buffer4[0]);
+  }
+  return a;
+}
+
+double cast_to_double(char* buffer8, bool swap) {
+  double a;
+  if (swap) {
+    a = (double) (buffer8[0] << 56 | buffer8[1] << 48 | buffer8[2] << 40 | buffer8[3] << 32|
+      buffer8[4] << 24 | buffer8[5] << 16 | buffer8[6] << 8 | buffer8[7]);
+  } else {
+    a = (double) (buffer8[7] << 56 | buffer8[6] << 48 | buffer8[5] << 40 | buffer8[4] << 32|
+      buffer8[3] << 24 | buffer8[2] << 16 | buffer8[1] << 8 | buffer8[0]);
+  }
+  return a;
+}
+
+int16_t cast_to_short(char* buffer2, bool swap) {
+  int16_t a;
+  if (swap) {
+    a = (int16_t) (buffer2[0] << 8 | buffer2[1]);
+  } else {
+    a =  (int16_t) (buffer2[1] << 8 | buffer2[0]);
+  }
+  return a;
+}
+
+
+
 int main() {
   std::string filename = "fPhantom-0005-00001-000001-01.nii";
   Nifti ni = Nifti(filename);
@@ -226,5 +312,12 @@ int main() {
   }
   std::cout << ni.getHeader().descrip << std::endl;
 
+  std::cout << ni.getHeader().datatype << std::endl;
+  std::cout << ni.getHeader().bitpix << std::endl;
 
+  Volume* asdf = ni.getDataPointer();
+  //asdf->printData();
+
+  std::cout << "this ends here" << std::endl;
+  return 0;
 }
